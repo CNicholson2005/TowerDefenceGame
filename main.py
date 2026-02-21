@@ -201,10 +201,10 @@ class TowerDefenseGame(FloatLayout):
             spacing=8
         )
         
-        # Add background
+        # Add darker background to match theme
         from kivy.graphics import Color, Rectangle
         with self.side_panel.canvas.before:
-            Color(0.15, 0.15, 0.15, 1)
+            Color(0.1, 0.1, 0.12, 0.95)  # Slightly transparent dark blue-gray
             self.side_panel_bg = Rectangle(pos=self.side_panel.pos, size=self.side_panel.size)
         
         def update_bg(instance, value):
@@ -720,28 +720,40 @@ class TowerDefenseGame(FloatLayout):
         side_panel_width = 300
         
         with self.game_canvas.canvas:
-            # Background (don't draw under side panel)
-            Color(0.1, 0.1, 0.1, 1)
+            # Better background - dark blue instead of black
+            Color(0.08, 0.08, 0.15, 1)
             Rectangle(pos=(0, y_offset), size=(self.width - side_panel_width, self.height - y_offset))
             
-            # Draw grid
-            Color(*GRID_LINE_COLOR)
+            # Subtler grid
+            Color(0.15, 0.15, 0.25, 0.3)  # Much more subtle
             for x in range(GRID_COLS + 1):
-                Line(points=[x * GRID_SIZE, y_offset, x * GRID_SIZE, self.grid_pixel_height + y_offset], width=1)
+                Line(points=[x * GRID_SIZE, y_offset, x * GRID_SIZE, self.grid_pixel_height + y_offset], width=0.5)
             for y in range(GRID_ROWS + 1):
-                Line(points=[0, y * GRID_SIZE + y_offset, self.grid_pixel_width, y * GRID_SIZE + y_offset], width=1)
+                Line(points=[0, y * GRID_SIZE + y_offset, self.grid_pixel_width, y * GRID_SIZE + y_offset], width=0.5)
             
-            # Draw path
-            Color(*PATH_COLOR)
+            # Draw path with border for depth
+            # Dark border
+            Color(0.4, 0.35, 0.25, 1)
             for i in range(len(self.path_points) - 1):
                 x1, y1 = self.path_points[i]
                 x2, y2 = self.path_points[i + 1]
-                Line(points=[x1, y1 + y_offset, x2, y2 + y_offset], width=30)
+                Line(points=[x1, y1 + y_offset, x2, y2 + y_offset], width=36, cap='round')
             
-            # Draw hover highlight
+            # Main path (lighter)
+            Color(0.65, 0.55, 0.4, 1)
+            for i in range(len(self.path_points) - 1):
+                x1, y1 = self.path_points[i]
+                x2, y2 = self.path_points[i + 1]
+                Line(points=[x1, y1 + y_offset, x2, y2 + y_offset], width=30, cap='round')
+            
+            # Draw hover highlight with glow
             if self.hovered_cell and self.hovered_cell not in self.path_cells:
                 grid_x, grid_y = self.hovered_cell
-                Color(0.3, 0.3, 0.3, 0.5)
+                # Outer glow
+                Color(0.3, 0.6, 1.0, 0.2)
+                Rectangle(pos=(grid_x * GRID_SIZE - 2, grid_y * GRID_SIZE + y_offset - 2), size=(GRID_SIZE + 4, GRID_SIZE + 4))
+                # Inner highlight
+                Color(0.3, 0.6, 1.0, 0.4)
                 Rectangle(pos=(grid_x * GRID_SIZE, grid_y * GRID_SIZE + y_offset), size=(GRID_SIZE, GRID_SIZE))
             
             # Draw muzzle flashes (behind towers)
@@ -750,14 +762,22 @@ class TowerDefenseGame(FloatLayout):
                 Color(flash.color[0], flash.color[1], flash.color[2], alpha)
                 Ellipse(pos=(flash.x - 20, flash.y - 20 + y_offset), size=(40, 40))
             
-            # Draw towers
+            # Draw towers with shadows
             for tower in self.towers:
+                size = GRID_SIZE * 0.7
+                
+                # Shadow
+                Color(0, 0, 0, 0.3)
+                Ellipse(pos=(tower.x - size/2 + 2, tower.y - size/2 + y_offset - 2), size=(size, size))
+                
+                # Tower base (darker)
+                darker_color = tuple(c * 0.7 for c in tower.stats['color'][:3]) + (1,)
+                Color(*darker_color)
+                Ellipse(pos=(tower.x - size/2, tower.y - size/2 + y_offset), size=(size, size))
+                
+                # Tower top (brighter)
                 Color(*tower.stats['color'])
-                size = GRID_SIZE * 0.6
-                Rectangle(
-                    pos=(tower.x - size/2, tower.y - size/2 + y_offset),
-                    size=(size, size)
-                )
+                Ellipse(pos=(tower.x - size/2 + 3, tower.y - size/2 + y_offset + 3), size=(size - 6, size - 6))
                 
                 # Draw level stars
                 if tower.level > 1:
@@ -775,39 +795,63 @@ class TowerDefenseGame(FloatLayout):
                         size=(tower.range * 2, tower.range * 2)
                     )
             
-            # Draw enemies
+            # Draw enemies with shadows and glow
             for enemy in self.enemies:
+                # Shadow
+                Color(0, 0, 0, 0.4)
+                Ellipse(pos=(enemy.x - 16, enemy.y - 17 + y_offset), size=(32, 32))
+                
+                # Outer glow (subtle)
+                glow_color = tuple(c * 0.6 for c in enemy.stats['color'][:3]) + (0.3,)
+                Color(*glow_color)
+                Ellipse(pos=(enemy.x - 18, enemy.y - 18 + y_offset), size=(36, 36))
+                
+                # Main enemy body
                 Color(*enemy.stats['color'])
                 Ellipse(pos=(enemy.x - 15, enemy.y - 15 + y_offset), size=(30, 30))
                 
-                # Health bar background
-                bar_width = 30
-                bar_height = 4
-                Color(0.3, 0, 0, 1)
+                # Health bar with border
+                bar_width = 34
+                bar_height = 5
+                
+                # Border
+                Color(0.1, 0.1, 0.1, 0.8)
+                Rectangle(pos=(enemy.x - bar_width/2 - 1, enemy.y + 20 + y_offset - 1), size=(bar_width + 2, bar_height + 2))
+                
+                # Background
+                Color(0.2, 0.05, 0.05, 1)
                 Rectangle(pos=(enemy.x - bar_width/2, enemy.y + 20 + y_offset), size=(bar_width, bar_height))
                 
-                # Health bar foreground
+                # Foreground (gradient effect)
                 health_pct = enemy.get_health_percentage()
                 if health_pct > 0.6:
-                    Color(0, 0.8, 0, 1)  # Green
+                    Color(0.2, 1, 0.2, 1)  # Bright green
                 elif health_pct > 0.3:
-                    Color(1, 0.8, 0, 1)  # Yellow
+                    Color(1, 0.9, 0.2, 1)  # Bright yellow
                 else:
-                    Color(1, 0, 0, 1)  # Red
+                    Color(1, 0.2, 0.2, 1)  # Bright red
                 Rectangle(
                     pos=(enemy.x - bar_width/2, enemy.y + 20 + y_offset),
                     size=(bar_width * health_pct, bar_height)
                 )
             
-            # Draw projectiles with trail effect
+            # Draw projectiles with enhanced glow
             for projectile in self.projectiles:
-                # Bright yellow center
-                Color(1, 1, 0.2, 1)
+                # Outer glow (large, very transparent)
+                Color(1, 0.9, 0.3, 0.15)
+                Ellipse(pos=(projectile.x - 12, projectile.y - 12 + y_offset), size=(24, 24))
+                
+                # Mid glow
+                Color(1, 1, 0.4, 0.4)
+                Ellipse(pos=(projectile.x - 8, projectile.y - 8 + y_offset), size=(16, 16))
+                
+                # Inner bright core
+                Color(1, 1, 0.8, 1)
                 Ellipse(pos=(projectile.x - 5, projectile.y - 5 + y_offset), size=(10, 10))
                 
-                # Outer glow
-                Color(1, 1, 0, 0.3)
-                Ellipse(pos=(projectile.x - 8, projectile.y - 8 + y_offset), size=(16, 16))
+                # White hot center
+                Color(1, 1, 1, 0.8)
+                Ellipse(pos=(projectile.x - 3, projectile.y - 3 + y_offset), size=(6, 6))
             
             # Draw particles
             for particle in self.particles:
