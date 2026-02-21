@@ -1,6 +1,6 @@
 # Tower Defense Game
 
-A mobile tower defense game built with Python and Kivy, designed for iPhone 13 Pro but works on desktop for development.
+A mobile tower defense game built with Python and Kivy, designed for iPhone 13 Pro but works on desktop for development. This game is still in development as I have many more features to add and improve on exisiting features.
 
 ## 🎮 Features
 
